@@ -4,7 +4,7 @@ import { CloseIcon } from './Icons.jsx'
 
 import { getSettings, setSettings, settingsData } from '../settings.js'
 
-const { useState, useEffect, useCallback } = React
+const { useState, useEffect, useCallback, Fragment } = React
 
 const Item = ({ code, defaultValue, label, type, options, placeholder, onChange }) => {
   if (type === 'radio') {
@@ -23,7 +23,16 @@ const Item = ({ code, defaultValue, label, type, options, placeholder, onChange 
     return (
       <>
         <label htmlFor={code}>{label}</label>
-        <input id={code} type="text" defaultValue={defaultValue} placeholder={placeholder} onBlur={onChange} />
+        <input
+          id={code}
+          type="text"
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          onBlur={onChange}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+        />
       </>
     )
   }
@@ -101,7 +110,7 @@ const Settings = () => {
                     }
                   }
                   return (
-                    <>
+                    <Fragment key={subKey}>
                       {title && <div className="settings__item-title">{title}</div>}
                       <div key={subKey} className={classes} onChange={type === 'radio' ? onChange : undefined}>
                         <Item
@@ -114,7 +123,7 @@ const Settings = () => {
                           onChange={onChange}
                         />
                       </div>
-                    </>
+                    </Fragment>
                   )
                 })}
                 {infos && infos.length && (
