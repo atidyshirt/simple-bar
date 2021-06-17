@@ -1,101 +1,99 @@
 import { run } from 'uebersicht'
-import Time from './lib/components/Time.jsx'
-import DateDisplay from './lib/components/Date.jsx'
-import Weather from './lib/components/Weather.jsx'
-import Battery from './lib/components/Battery.jsx'
-import Sound from './lib/components/Sound.jsx'
-import Mic from './lib/components/Mic.jsx'
-import Wifi from './lib/components/Wifi.jsx'
-import Keyboard from './lib/components/Keyboard.jsx'
-import Spotify from './lib/components/Spotify.jsx'
-import Music from './lib/components/Music.jsx'
-import BrowserTrack from './lib/components/BrowserTrack.jsx'
-import VPN from './lib/components/VPN.jsx'
-import Error from './lib/components/Error.jsx'
 
-import { parseJson, getTheme, getActiveWidgets, getLocation, setLocation, refreshData } from './lib/utils.js'
-import { getSettings } from './lib/settings.js'
+import Error from './lib/components/error.jsx'
+import Zoom, { zoomStyles } from './lib/components/data/zoom.jsx'
+import Time, { timeStyles } from './lib/components/data/time.jsx'
+import DateDisplay, { dateStyles } from './lib/components/data/date-display.jsx'
+import Weather, { weatherStyles } from './lib/components/data/weather.jsx'
+import Battery, { batteryStyles } from './lib/components/data/battery.jsx'
+import Sound, { soundStyles } from './lib/components/data/sound.jsx'
+import Mic, { micStyles } from './lib/components/data/mic.jsx'
+import Wifi, { wifiStyles } from './lib/components/data/wifi.jsx'
+import Keyboard, { keyboardStyles } from './lib/components/data/keyboard.jsx'
+import Spotify, { spotifyStyles } from './lib/components/data/spotify.jsx'
+import Music, { musicStyles } from './lib/components/data/music.jsx'
+import BrowserTrack, { browserTrackStyles } from './lib/components/data/browser-track.jsx'
+import ViscosityVPN, { viscosityVPNStyles } from './lib/components/data/viscosity-vpn.jsx'
+import { specterStyles } from './lib/components/data/specter.jsx'
+import { dataWidgetStyles } from './lib/styles/components/data/data-widget.js'
 
-import { styles } from './lib/styles/Styles.js'
-import CustomStyles from './lib/styles/CustomStyles.js'
+import { classnames, parseJson, getActiveWidgets, injectStyles, refreshData } from './lib/utils'
+import { getSettings } from './lib/settings'
 
 const refreshFrequency = 12000
 
 const settings = getSettings()
-
-const theme = getTheme(settings)
-const Styles = styles[theme]
-
-const className = `
-  ${Styles.BaseStyles}
-  ${Styles.DateStyles}
-  ${Styles.TimeStyles}
-  ${Styles.WeatherStyles}
-  ${Styles.BatteryStyles}
-  ${Styles.WifiStyles}
-  ${Styles.KeyboardStyles}
-  ${Styles.MicStyles}
-  ${Styles.SoundStyles}
-  ${Styles.SpotifyStyles}
-  ${Styles.MusicStyles}
-  ${Styles.BrowserTrackStyles}
-  ${Styles.SpecterStyles}
-  ${Styles.VPNStyles}
-
-  ${settings.global.floatingBar ? Styles.FloatingBarOverride : ''}
-  ${settings.global.noColorInData ? Styles.NoColorInDataOverride : ''}
-  ${settings.global.noBarBg ? Styles.NoBarBgOverride : ''}
-  ${settings.global.bottomBar ? Styles.BottomBarOverride : ''}
-  ${settings.global.floatingBar && settings.global.bottomBar ? Styles.FloatinBottomBarOverride : ''}
-
-  ${CustomStyles}
-`
-
-const activeWidgets = getActiveWidgets(settings)
+const activeWidgets = getActiveWidgets()
 const { shell } = settings.global
 const { weatherWidget } = settings.widgets
 const { networkDevice } = settings.networkWidgetOptions
 const { vpnConnectionName } = settings.vpnWidgetOptions
 const { customLocation } = settings.weatherWidgetOptions
-const userLocation = customLocation !== '' ? customLocation : undefined
+const userLocation = weatherWidget && customLocation.length ? customLocation : undefined
 
-if (weatherWidget && !userLocation) {
-  window.geolocation.getCurrentPosition(setLocation)
+const getPosition = async (options) =>
+  new Promise((resolve, reject) => window.geolocation.getCurrentPosition(resolve, reject, options))
+
+const command = async () => {
+  let location
+  if (weatherWidget) {
+    const position = await getPosition()
+    location = position?.address?.city
+  }
+  const params = `"${activeWidgets}" "${networkDevice}" "${userLocation || location}" "${vpnConnectionName}"`
+  return run(`${shell} simple-bar/lib/scripts/get_data.sh ${params}`)
 }
 
-const command = () => {
-  const location = weatherWidget ? getLocation() : ''
-  if (weatherWidget && (!location || location === '') && !userLocation) refreshData()
-  return run(
-    `${shell} simple-bar/lib/scripts/get_data.sh "${activeWidgets}" "${networkDevice}" "${
-      userLocation || location
-    }" "${vpnConnectionName}"`
-  )
-}
+injectStyles('simple-bar-data-styles', [
+  dataWidgetStyles,
+  dateStyles,
+  zoomStyles,
+  timeStyles,
+  weatherStyles,
+  batteryStyles,
+  wifiStyles,
+  keyboardStyles,
+  micStyles,
+  soundStyles,
+  spotifyStyles,
+  musicStyles,
+  browserTrackStyles,
+  viscosityVPNStyles,
+  specterStyles
+])
 
 const render = ({ output, error }) => {
+  const classes = classnames('simple-bar simple-bar--data', {
+    'simple-bar--floating': settings.global.floatingBar,
+    'simple-bar--no-color-in-data': settings.global.noColorInData,
+    'simple-bar--no-bar-background': settings.global.noBarBg,
+    'simple-bar--on-bottom': settings.global.bottomBar
+  })
+
   if (error) {
     console.log('Error in data.jsx', error)
-    return <Error widget="data" type="error" />
+    return <Error widget="data" type="error" classes={classes} />
   }
-  if (!output) return <Error widget="data" type="noOutput" />
+  if (!output) return <Error widget="data" type="noOutput" classes={classes} />
 
   const data = parseJson(output)
-  if (!data) return <Error widget="data" type="noData" />
+  if (!data) return <Error widget="data" type="noData" classes={classes} />
 
-  const { weather, battery, wifi, keyboard, vpn, mic, sound, spotify, music, browserTrack } = data
+  const { zoom, weather, battery, wifi, keyboard, vpn, mic, sound, spotify, music, browserTrack } = data
+  const browserTrackOutput = { ...browserTrack, spotifyStatus: spotify.spotifyIsRunning }
 
   return (
-    <div className="simple-bar simple-bar--data">
-      <BrowserTrack output={{ ...browserTrack, spotifyStatus: spotify.spotifyIsRunning }} />
+    <div className={classes}>
+      <Zoom output={zoom} />
+      <BrowserTrack output={browserTrackOutput} />
       <Spotify output={spotify} />
       <Music output={music} />
       <Weather output={weather} />
       <Battery output={battery} />
       <Mic output={mic} />
       <Sound output={sound} />
-      <VPN output={vpn} vpnConnectionName={vpnConnectionName} />
-      <Wifi output={wifi} networkDevice={networkDevice} />
+      <ViscosityVPN output={vpn} />
+      <Wifi output={wifi} />
       <Keyboard output={keyboard} />
       <DateDisplay />
       <Time />
@@ -103,4 +101,4 @@ const render = ({ output, error }) => {
   )
 }
 
-export { command, refreshFrequency, className, render }
+export { command, refreshFrequency, render }

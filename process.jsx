@@ -1,55 +1,50 @@
-import Process from './lib/components/Process.jsx'
-import Settings from './lib/components/Settings.jsx'
-import Error from './lib/components/Error.jsx'
+import Process from './lib/components/process/process.jsx'
+import Settings from './lib/components/process/settings.jsx'
+import Error from './lib/components/error.jsx'
 
-import { parseJson, getTheme } from './lib/utils.js'
-import { getSettings } from './lib/settings.js'
+import { classnames, parseJson, injectStyles } from './lib/utils'
+import { getSettings } from './lib/settings'
 
-import { styles } from './lib/styles/Styles.js'
-import CustomStyles from './lib/styles/CustomStyles.js'
+import { variables } from './lib/styles/core/variables'
+import { baseStyles } from './lib/styles/core/base'
+import { processStyles } from './lib/styles/components/process'
+import { settingsStyles } from './lib/styles/components/settings'
+import { customStyles } from './lib/styles/custom-styles'
 
 const refreshFrequency = false
 
 const settings = getSettings()
-
-const theme = getTheme(settings)
-const Styles = styles[theme]
-
-const className = `
-  ${Styles.BaseStyles}
-  ${Styles.ProcessStyles}
-  ${Styles.SettingsStyles}
-
-  ${settings.global.floatingBar ? Styles.FloatingBarOverride : ''}
-  ${settings.global.noBarBg ? Styles.NoBarBgOverride : ''}
-  ${settings.global.bottomBar ? Styles.BottomBarOverride : ''}
-  ${settings.global.floatingBar && settings.global.bottomBar ? Styles.FloatinBottomBarOverride : ''}
-
-  ${CustomStyles}
-`
-
-const { yabaiPath, shell } = settings.global
+const { yabaiPath = '/usr/local/bin/yabai', shell } = settings.global
 const { processWidget } = settings.widgets
 
 const command = `${shell} simple-bar/lib/scripts/get_process.sh ${yabaiPath}`
 
+injectStyles('simple-bar-process-styles', [variables, baseStyles, processStyles, settingsStyles, customStyles])
+
 const render = ({ output, error }) => {
+  const classes = classnames('simple-bar simple-bar--process', {
+    'simple-bar--floating': settings.global.floatingBar,
+    'simple-bar--no-bar-background': settings.global.noBarBg,
+    'simple-bar--on-bottom': settings.global.bottomBar
+  })
+
   if (error) {
     console.log('Error in process.jsx', error)
-    return <Error widget="process" type="error" withSettings />
+    return <Error widget="process" type="error" classes={classes} withSettings />
   }
-  if (!output) return <Error widget="process" type="noOutput" withSettings />
+  if (!output) return <Error widget="process" type="noOutput" classes={classes} withSettings />
 
   const data = parseJson(output)
-  if (!data) return <Error widget="process" type="noData" withSettings />
+  if (!data) return <Error widget="process" type="noData" classes={classes} withSettings />
 
   const { process } = data
+
   return (
-    <div className="simple-bar simple-bar--process">
+    <div className={classes}>
       {processWidget && <Process output={process} />}
       <Settings />
     </div>
   )
 }
 
-export { command, refreshFrequency, className, render }
+export { command, refreshFrequency, render }

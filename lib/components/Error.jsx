@@ -1,5 +1,5 @@
-import Settings from './Settings.jsx'
-import { classnames, refreshSpaces, refreshProcess, refreshData } from '../utils.js'
+import Settings from './process/settings.jsx'
+import { classnames, refreshSpaces, refreshProcess, refreshData } from '../utils'
 
 const message = {
   error: 'Something went wrong...',
@@ -7,8 +7,8 @@ const message = {
   noData: 'JSON error...'
 }
 
-const Error = ({ widget, type, withSettings }) => {
-  const classes = classnames(`simple-bar simple-bar--${widget} simple-bar--empty`, {
+const Error = ({ widget, type, classes, withSettings }) => {
+  const errorClasses = classnames('simple-bar--empty', classes, {
     'simple-bar--loading': type === 'noOutput'
   })
 
@@ -19,7 +19,7 @@ const Error = ({ widget, type, withSettings }) => {
   }
 
   return (
-    <div className={classes}>
+    <div className={errorClasses}>
       <span>
         simple-bar-{widget}.jsx: {message[type]}
       </span>
